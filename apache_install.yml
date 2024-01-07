@@ -1,6 +1,6 @@
 ---
 
-- hosts: all
+- hosts: webservers
   become: true
   tasks:
 
@@ -11,3 +11,11 @@
         - libapache2-mod-php
       state: latest
       update_cache: yes
+
+  - name: copy default html file for site
+    copy:
+      src: site.html
+      dest: /var/www/html/index.html
+      owner: root
+      group: root
+      mode: 0644
