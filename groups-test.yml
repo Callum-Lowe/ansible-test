@@ -1,0 +1,27 @@
+---
+
+- hosts: all
+  become: true
+  tasks:
+
+  - name: update repos
+    apt:
+      update_cache: true
+
+- hosts: webservers
+  become: true
+  tasks:
+
+  - name: install apache
+    apt:
+      name: apache2
+      state: latest
+
+- hosts: fileservers
+  become: true
+  tasks:
+
+  - name: install samba
+    apt:
+      name: samba
+      state: latest
