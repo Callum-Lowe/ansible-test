@@ -1,0 +1,10 @@
+---
+
+- hosts: all
+  become: true
+  tasks:
+
+  - name: create docker directory
+    ansible.builtin.file:
+      path: docker/
+      state: directory
