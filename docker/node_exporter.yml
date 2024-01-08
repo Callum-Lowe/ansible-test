@@ -1,0 +1,15 @@
+---
+- name: deploy node_exporter
+  hosts: all
+  become: yes
+  tasks:
+
+  - name: deploy node-exporter
+    community.docker.docker_container:
+      name: node_exporter
+      image: "quay.io/prometheus/node-exporter:latest"
+      command: "--path.rootfs=/host"
+      network_mode: host
+      volumes:
+        - /:/host:ro,rslave
+      restart_policy: unless-stopped
