@@ -1,0 +1,19 @@
+---
+
+- hosts: all
+  become: true
+  tasks:
+
+  - name: pull docker image for overseerr
+    community.docker.docker_image:
+      name: lscr.io/linuxserver/overseerr:latest
+      source: pull
+
+  - name: create docker container
+    community.docker.docker_container:
+      name: overseerr
+      image: lscr.io/linuxserver/overseerr:latest
+      ports: 5055:5055
+      volumes:
+        - /home/callum/docker/overseerr/config:/config
+      state: started
