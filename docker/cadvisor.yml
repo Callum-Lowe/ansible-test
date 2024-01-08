@@ -1,0 +1,19 @@
+---
+- name: deploy cAdvisor
+  hosts: all
+  become: yes
+  tasks:
+
+  - name: deploy cAdvisor
+    community.docker.docker_container:
+      name: cAdvisor
+      image: "gcr.io/cadvisor/cadvisor:latest"
+      ports:
+        - "8383:8080"
+      volumes:
+        - /:/rootfs:ro
+        - /:/run:/var/run:ro
+        - /sys:/sys:ro
+        - /var/lib/docker/:/var/lib/docker:ro
+        - /dev/disk/:/dev/disk:ro
+      restart_policy: unless-stopped
