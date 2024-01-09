@@ -1,0 +1,25 @@
+---
+- name: deploy lidarr
+  hosts: all
+  become: yes
+  tasks:
+
+  - name: create volume
+    community.docker.docker_volume:
+      name: lidarr-data
+      driver: local
+
+  - name: deploy lidarr
+    community.docker.docker_container:
+      name: lidarr
+      image: "lscr.io/linuxserver/lidarr:latest"
+      env:
+        PUID=1000
+        GUID=1000
+      ports:
+        - "8686:8686"
+      volumes:
+        - /home/callum/docker/lidarr/config:/config
+        - /htpc/Media/Music:/music
+        - /htpc/Media/Music:/downloads
+      restart_policy: unless-stopped
