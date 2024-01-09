@@ -1,0 +1,23 @@
+---
+- name: deploy prowlarr
+  hosts: all
+  become: yes
+  tasks:
+
+  - name: create volume
+    community.docker.docker_volume:
+      name: prowlarr-data
+      driver: local
+
+  - name: deploy prowlarr
+    community.docker.docker_container:
+      name: prowlarr
+      image: "lscr.io/linuxserver/prowlarr:latest"
+      env:
+        PUID=1000
+        GUID=1000
+      ports:
+        - "9696:9696"
+      volumes:
+        - /home/callum/docker/prowlarr/config:/config
+      restart_policy: unless-stopped
