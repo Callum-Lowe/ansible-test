@@ -1,0 +1,25 @@
+---
+- name: deploy radarr
+  hosts: all
+  become: yes
+  tasks:
+
+  - name: create volume
+    community.docker.docker_volume:
+      name: radarr-data
+      driver: local
+
+  - name: deploy radarr
+    community.docker.docker_container:
+      name: radarr
+      image: "lscr.io/linuxserver/radarr:latest"
+      env:
+        PUID=1000
+        GUID=1000
+      ports:
+        - "7878:7878"
+      volumes:
+        - /home/callum/docker/radarr/config:/config
+        - /htpc/Media/Movies:/movies
+        - /htpc/Media/Downloads:/downloads
+      restart_policy: unless-stopped
