@@ -1,0 +1,26 @@
+---
+- name: deploy prometheus
+  hosts: all
+  become: yes
+  tasks:
+
+  - name: create volume
+    community.docker.docker_volume:
+      name: prometheus-data
+      driver: local
+
+
+  - name: deploy prometheus
+    community.docker.docker_container:
+      name: prometheus
+      ports:
+        - "9090:9090"
+      image: "prom/prometheus:latest"
+      command: "--config.file=/home/callum/docker/prometheus/prometheus.yml"
+      env:
+        PUID=1000
+        GUID=1000
+      volumes:
+        - /home/callum/docker/prometheus:/home/callum/docker/prometheus
+        - prometheus-data:/prometheus
+      restart_policy: unless-stopped
