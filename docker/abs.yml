@@ -19,7 +19,7 @@
         - "13378:80"
       volumes:
         - /htpc/Media/Audiobooks:/audiobooks
-        - /htpc/Media/Podcasts;/podcasts
+        - /htpc/Media/Podcasts:/podcasts
         - /home/callum/docker/abs/cofig:/config
         - /home/callum/docker/abs/metadata:/metadata
       restart_policy: unless-stopped
