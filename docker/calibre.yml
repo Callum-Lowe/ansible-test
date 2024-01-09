@@ -1,0 +1,52 @@
+---
+- name: deploy Calibre and Calibre-web
+  hosts: all
+  become: yes
+  tasks:
+
+  - name: create volume
+    community.docker.docker_volume:
+      name: bazarr-data
+      driver: local
+
+  - name: Create ebooks network
+    community.docker.docker_network:
+      name: ebooks
+      internal: false
+
+
+  - name: deploy Calibre
+    community.docker.docker_container:
+      name: Calibre
+      image: "ghcr.io/linuxserver/calibre"
+      env:
+        PUID=1000
+        GUID=1000
+      ports:
+        - "9999:8080"
+        - "9991:8081"
+      volumes:
+        - /home/callum/docker/calibre/config:/config
+        - /home/callum/docker/calibre/upload:/uploads
+        - /home/callum/docker/calibre/plugins:/plugins
+        - /htpc/Media/Books:/books
+      networks:
+        - name: ebooks
+      restart_policy: unless-stopped
+
+
+  - name: deploy Calibre-web
+    community.docker.docker_container:
+      name: Calibre-web
+      image: "ghcr.io/linuxserver/calibre-web"
+      env:
+        PUID=1000
+        GUID=1000
+      ports:
+        - "9393:8083"
+      volumes:
+        - /home/callum/docker/calibre/calibre-web:/config
+        - /htpc/Media/Books:/books
+      networks:
+        - name: ebooks
+      restart_policy: unless-stopped
