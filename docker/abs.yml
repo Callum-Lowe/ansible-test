@@ -1,0 +1,25 @@
+---
+- name: deploy audiobookshelf
+  hosts: all
+  become: yes
+  tasks:
+
+  - name: create volume
+    community.docker.docker_volume:
+      name: abs-data
+      driver: local
+
+
+  - name: deploy AudioBookShelf
+    community.docker.docker_container:
+      name: audiobookshelf
+      image: "ghcr.io/advplyr/audiobookshelf:latest"
+      network_mode: bridge
+      ports:
+        - "13378:80"
+      volumes:
+        - /htpc/Media/Audiobooks:/audiobooks
+        - /htpc/Media/Podcasts;/podcasts
+        - /home/callum/docker/abs/cofig:/config
+        - /home/callum/docker/abs/metadata:/metadata
+      restart_policy: unless-stopped
