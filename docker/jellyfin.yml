@@ -1,0 +1,26 @@
+---
+- name: deploy jellyfin
+  hosts: all
+  become: yes
+  tasks:
+
+  - name: create volume
+    community.docker.docker_volume:
+      name: jellyfin-data
+      driver: local
+
+  - name: deploy jellyfin
+    community.docker.docker_container:
+      name: jellyfin
+      image: "lscr.io/linuxserver/jellyfin:latest"
+      env:
+        PUID=1000
+        GUID=1000
+      ports:
+        - "8096:8096"
+      volumes:
+        - /home/callum/docker/jellyfin/config:/config
+        - /htpc/Media/Movies:/data/movies
+        - /htpc/Media/TV-Shows:/data/tvshows
+        - /htpc/Media/Music:/data/music
+      restart_policy: unless-stopped
