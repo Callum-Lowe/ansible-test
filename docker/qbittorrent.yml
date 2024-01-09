@@ -1,0 +1,28 @@
+---
+- name: deploy qbittorrent
+  hosts: all
+  become: yes
+  tasks:
+
+  - name: create volume
+    community.docker.docker_volume:
+      name: qbittorrent-data
+      driver: local
+
+  - name: deploy qbittorrent
+    community.docker.docker_container:
+      name: qbittorrent
+      image: "lscr.io/linuxserver/qbittorrent:latest"
+      network_mode: "host"
+      env:
+        PUID=1000
+        GUID=1000
+        WEBUI_PORT=8181
+      ports:
+        - "8181:8181"
+        - "6881:6881"
+        - "6881:6881/upd"
+      volumes:
+        - /home/callum/docker/qbittorrent/config:/config
+        - /htpc/Media/Downloads:/downloads
+      restart_policy: unless-stopped
