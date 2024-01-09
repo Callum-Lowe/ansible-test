@@ -1,0 +1,28 @@
+---
+- name: deploy readarr
+  hosts: all
+  become: yes
+  tasks:
+
+  - name: create volume
+    community.docker.docker_volume:
+      name: readarr-data
+      driver: local
+
+  - name: deploy readarr
+    community.docker.docker_container:
+      name: readarr
+      image: "lscr.io/linuxserver/readarr:develop"
+      env:
+        PUID=1000
+        GUID=1000
+      ports:
+        - "8787:8787"
+      networks:
+        - name: "ebooks"
+      volumes:
+        - /home/callum/docker/readarr/config:/config
+        - /htpc/Media/Audiobooks:/audiobooks
+        - /htpc/Media/Books:/books
+        - /htpc/Media/Downloads:/downloads
+      restart_policy: unless-stopped
