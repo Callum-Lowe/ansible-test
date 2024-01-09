@@ -1,0 +1,23 @@
+---
+- name: deploy tautulli
+  hosts: all
+  become: yes
+  tasks:
+
+  - name: create volume
+    community.docker.docker_volume:
+      name: tautulli-data
+      driver: local
+
+  - name: deploy tautulli
+    community.docker.docker_container:
+      name: tautulli
+      image: "ghcr.io/tautulli/tautulli"
+      env:
+        PUID=1000
+        GUID=1000
+      ports:
+        - "7782:8181"
+      volumes:
+        - /home/callum/docker/tautulli/config:/config
+      restart_policy: unless-stopped
