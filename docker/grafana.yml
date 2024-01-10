@@ -1,0 +1,23 @@
+---
+- name: deploy grafana
+  hosts: all
+  become: yes
+  tasks:
+
+  - name: create volume
+    community.docker.docker_volume:
+      name: grafana-data
+      driver: local
+
+  - name: deploy grafana
+    community.docker.docker_container:
+      name: grafana
+      image: "grafana/grafana-oss:latest"
+      env:
+        PUID=1000
+        GUID=1000
+      ports:
+        - "3000:3000"
+      volumes:
+        - grafana-data:/var/lib/grafana
+      restart_policy: unless-stopped
