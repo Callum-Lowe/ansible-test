@@ -1,0 +1,18 @@
+---
+- name: deploy uptime-kuma
+  hosts: all
+  become: yes
+  tasks:
+  
+  - name: deploy uptime-kuma
+    community.docker.docker_container:
+      name: uptime-kuma
+      image: "louislam/uptime-kuma:latest"
+      env:
+        PUID=1000
+        GUID=1000
+      ports:
+        - "3001:3001"
+      volumes:
+        - ./home/callum/docker/uptime-kuma:/app/data
+      restart_policy: unless-stopped
