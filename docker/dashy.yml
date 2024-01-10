@@ -1,0 +1,23 @@
+---
+- name: deploy dashy
+  hosts: all
+  become: yes
+  tasks:
+
+  - name: create volume
+    community.docker.docker_volume:
+      name: dashy-data
+      driver: local
+
+  - name: deploy dashy
+    community.docker.docker_container:
+      name: Dashy
+      image: "lissy93/dashy"
+      env:
+        PUID=1000
+        GUID=1000
+      ports:
+        - "4000:80"
+      volumes:
+        - /home/callum/docker/dashy/config.yml:/config.yml
+      restart_policy: unless-stopped
