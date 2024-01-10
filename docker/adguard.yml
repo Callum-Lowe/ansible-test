@@ -1,0 +1,28 @@
+---
+- name: deploy adGuard
+  hosts: all
+  become: yes
+  tasks:
+
+  - name: create volume
+    community.docker.docker_volume:
+      name: adguard-data
+      driver: local
+
+  - name: deploy adGuard
+    community.docker.docker_container:
+      name: adguardhome
+      image: "adguard/adguardhome"
+      env:
+        CUSTOM_PORT=2000
+      ports:
+        - "53:53/tcp"
+        - "53:53/udp"
+        - "86:80/tcp"
+        - "443:443/tcp"
+        - "443:443/udp"
+        - "2000:3000/tcp"
+      volumes:
+        - /home/callum/docker/adguard/config:/opt/adguardhome/conf
+        - /home/callum/docker/adguard/work:/opt/adguardhome/work
+      restart_policy: unless-stopped
