@@ -1,0 +1,18 @@
+---
+- name: deploy speedtest
+  hosts: all
+  become: yes
+  tasks:
+
+  - name: deploy speedtest
+    community.docker.docker_container:
+      name: speedtest
+      image: "jraviles/prometheus_speedtest"
+      env:
+        PUID=1000
+        GUID=1000
+      ports:
+        - "9516:9516"
+      volumes:
+        - ./home/callum/docker/speedtest/coonfig:/config
+      restart_policy: unless-stopped
