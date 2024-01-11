@@ -1,0 +1,457 @@
+---
+- hosts: all
+  become: true
+  tasks:
+
+    - name: Install aptitude
+      apt:
+        name: aptitude
+        state: latest
+        update_cache: true
+
+
+    - name: Install required system packages
+      apt:
+        pkg:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+          - python3-pip
+          - virtualenv
+          - python3-setuptools
+        state: latest
+        update_cache: true
+
+    - name: Add Docker GPG apt Key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker Repository
+      apt_repository:
+        repo: deb https://download.docker.com/linux/ubuntu focal stable
+        state: present
+
+    - name: Update apt and install docker-ce
+      apt:
+        name: docker-ce
+        state: latest
+        update_cache: true
+
+    - name: Install Docker Module for Python
+      pip:
+        name: docker
+
+
+- name: Deploy docker containers for all servers
+  hosts: all
+  become: yes
+  tasks:
+
+  - name: deploy cAdvisor
+    community.docker.docker_container:
+      name: cAdvisor
+      image: "gcr.io/cadvisor/cadvisor:latest"
+      ports:
+        - "8383:8080"
+      volumes:
+        - /:/rootfs:ro
+        - /:/run:/var/run:ro
+        - /sys:/sys:ro
+        - /var/lib/docker/:/var/lib/docker:ro
+        - /dev/disk/:/dev/disk:ro
+      restart_policy: unless-stopped
+
+  - name: deploy node-exporter
+    community.docker.docker_container:
+      name: node_exporter
+      image: "quay.io/prometheus/node-exporter:latest"
+      command: "--path.rootfs=/host"
+      network_mode: host
+      volumes:
+        - /:/host:ro,rslave
+      restart_policy: unless-stopped
+
+  - name: deploy portainer
+    community.docker.docker_container:
+      name: portainer
+      image: "docker.io/portainer/portainer-ce"
+      ports:
+        - "9000:9000"
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+        - portainer-data:/data
+      restart_policy: unless-stopped
+
+  - name: create volume for prometheus
+    community.docker.docker_volume:
+      name: prometheus-data
+      driver: local
+
+  - name: deploy prometheus
+    community.docker.docker_container:
+      name: prometheus
+      ports:
+        - "9090:9090"
+      image: "prom/prometheus:latest"
+      command: "--config.file=/home/callum/docker/prometheus/prometheus.yml"
+      env:
+        PUID=1000
+        GUID=1000
+      volumes:
+        - /home/callum/docker/prometheus:/home/callum/docker/prometheus
+        - prometheus-data:/prometheus
+      restart_policy: unless-stopped
+
+- name: Deloy docker containers for media server
+  hosts: mediaserver
+  become: yes
+  tasks:
+
+  - name: create volume for abs
+    community.docker.docker_volume:
+      name: abs-data
+      driver: local
+
+  - name: deploy AudioBookShelf
+    community.docker.docker_container:
+      name: audiobookshelf
+      image: "ghcr.io/advplyr/audiobookshelf:latest"
+      network_mode: bridge
+      ports:
+        - "13378:80"
+      volumes:
+        - /htpc/Media/Audiobooks:/audiobooks
+        - /htpc/Media/Podcasts:/podcasts
+        - /home/callum/docker/abs/config:/config
+        - /home/callum/docker/abs/metadata:/metadata
+      restart_policy: unless-stopped
+
+  - name: create volume for bazarr
+    community.docker.docker_volume:
+      name: bazarr-data
+      driver: local
+
+  - name: deploy bazarr
+    community.docker.docker_container:
+      name: bazarr
+      image: "lscr.io/linuxserver/bazarr:latest"
+      env:
+       PUID=1000
+       GUID=1000
+      ports:
+        - "6767:6767"
+      volumes:
+        - /htpc/Media/Movies:/movies
+        - /htpc/Media/TV-Shows;/tv
+        - /home/callum/docker/bazarr/config:/config
+      restart_policy: unless-stopped
+
+  - name: create volume for Calibre
+    community.docker.docker_volume:
+      name: calibre-data
+      driver: local
+
+  - name: Create ebooks network
+    community.docker.docker_network:
+      name: ebooks
+      internal: false
+
+  - name: deploy Calibre
+    community.docker.docker_container:
+      name: Calibre
+      image: "ghcr.io/linuxserver/calibre"
+      env:
+        PUID=1000
+        GUID=1000
+      ports:
+        - "9999:8080"
+        - "9991:8081"
+      volumes:
+        - /home/callum/docker/calibre/config:/config
+        - /home/callum/docker/calibre/upload:/uploads
+        - /home/callum/docker/calibre/plugins:/plugins
+        - /htpc/Media/Books:/books
+      networks:
+        - name: ebooks
+      restart_policy: unless-stopped
+
+  - name: deploy Calibre-web
+    community.docker.docker_container:
+      name: Calibre-web
+      image: "ghcr.io/linuxserver/calibre-web"
+      env:
+        PUID=1000
+        GUID=1000
+      ports:
+        - "9393:8083"
+      volumes:
+        - /home/callum/docker/calibre/calibre-web:/config
+        - /htpc/Media/Books:/books
+      networks:
+        - name: ebooks
+      restart_policy: unless-stopped
+
+  - name: create volume for jellyfin
+    community.docker.docker_volume:
+      name: jellyfin-data
+      driver: local
+
+  - name: deploy jellyfin
+    community.docker.docker_container:
+      name: jellyfin
+      image: "lscr.io/linuxserver/jellyfin:latest"
+      env:
+        PUID=1000
+        GUID=1000
+      ports:
+        - "8096:8096"
+      volumes:
+        - /home/callum/docker/jellyfin/config:/config
+        - /htpc/Media/Movies:/data/movies
+        - /htpc/Media/TV-Shows:/data/tvshows
+        - /htpc/Media/Music:/data/music
+      restart_policy: unless-stopped
+
+  - name: create volume for lidarr
+    community.docker.docker_volume:
+      name: lidarr-data
+      driver: local
+
+  - name: deploy lidarr
+    community.docker.docker_container:
+      name: lidarr
+      image: "lscr.io/linuxserver/lidarr:latest"
+      env:
+        PUID=1000
+        GUID=1000
+      ports:
+        - "8686:8686"
+      volumes:
+        - /home/callum/docker/lidarr/config:/config
+        - /htpc/Media/Music:/music
+        - /htpc/Media/Music:/downloads
+      restart_policy: unless-stopped
+
+  - name: deploy overseerr
+    community.docker.docker_container:
+      name: overseerr
+      image: lscr.io/linuxserver/overseerr:latest
+      ports: 5055:5055
+      volumes:
+        - /home/callum/docker/overseerr/config:/config
+      restart_policy: unless-stopped
+
+  - name: create volume for plex
+    community.docker.docker_volume:
+      name: plex-data
+
+  - name: deploy plex
+    community.docker.docker_container:
+      name: plex
+      image: "lscr.io/linuxserver/plex:latest"
+      network_mode: host
+      env:
+        PUID=1000
+        PGID=1000
+        VERSION=docker
+      volumes:
+        - plex-data:/config
+        - /htpc/Media/TV-Shows:/tv
+        - /htpc/Media/Movies:/movies
+      restart_policy: unless-stopped
+
+  - name: create volume for prowlarr
+    community.docker.docker_volume:
+      name: prowlarr-data
+      driver: local
+
+  - name: deploy prowlarr
+    community.docker.docker_container:
+      name: prowlarr
+      image: "lscr.io/linuxserver/prowlarr:latest"
+      env:
+        PUID=1000
+        GUID=1000
+      ports:
+        - "9696:9696"
+      volumes:
+        - /home/callum/docker/prowlarr/config:/config
+      restart_policy: unless-stopped
+
+  - name: create volume for qbittorrent
+    community.docker.docker_volume:
+      name: qbittorrent-data
+      driver: local
+
+  - name: deploy qbittorrent
+    community.docker.docker_container:
+      name: qbittorrent
+      image: "lscr.io/linuxserver/qbittorrent:latest"
+      network_mode: "host"
+      env:
+        PUID=1000
+        GUID=1000
+        WEBUI_PORT=8181
+      ports:
+        - "8181:8181"
+        - "6881:6881"
+        - "6881:6881/upd"
+      volumes:
+        - /home/callum/docker/qbittorrent/config:/config
+        - /htpc/Media/Downloads:/downloads
+      restart_policy: unless-stopped
+      
+  - name: create volume for radarr
+    community.docker.docker_volume:
+      name: radarr-data
+      driver: local
+
+  - name: deploy radarr
+    community.docker.docker_container:
+      name: radarr
+      image: "lscr.io/linuxserver/radarr:latest"
+      env:
+        PUID=1000
+        GUID=1000
+      ports:
+        - "7878:7878"
+      volumes:
+        - /home/callum/docker/radarr/config:/config
+        - /htpc/Media/Movies:/movies
+        - /htpc/Media/Downloads:/downloads
+      restart_policy: unless-stopped
+
+  - name: create volume for readarr
+    community.docker.docker_volume:
+      name: readarr-data
+      driver: local
+
+  - name: deploy readarr
+    community.docker.docker_container:
+      name: readarr
+      image: "lscr.io/linuxserver/readarr:develop"
+      env:
+        PUID=1000
+        GUID=1000
+      ports:
+        - "8787:8787"
+      networks:
+        - name: "ebooks"
+      volumes:
+        - /home/callum/docker/readarr/config:/config
+        - /htpc/Media/Audiobooks:/audiobooks
+        - /htpc/Media/Books:/books
+        - /htpc/Media/Downloads:/downloads
+      restart_policy: unless-stopped
+
+  - name: create volume for sonarr
+    community.docker.docker_volume:
+      name: sonarr-data
+      driver: local
+
+  - name: deploy sonarr
+    community.docker.docker_container:
+      name: sonarr
+      image: "lscr.io/linuxserver/sonarr:latest"
+      env:
+        PUID=1000
+        GUID=1000
+      ports:
+        - "8989:8989"
+      volumes:
+        - /home/callum/docker/sonarr/config:/config
+        - /htpc/Media/TV-Shows:/tv
+        - /htpc/Media/Downloads:/downloads
+      restart_policy: unless-stopped
+
+  - name: create volume for tautulli
+    community.docker.docker_volume:
+      name: tautulli-data
+      driver: local
+
+  - name: deploy tautulli
+    community.docker.docker_container:
+      name: tautulli
+      image: "ghcr.io/tautulli/tautulli"
+      env:
+        PUID=1000
+        GUID=1000
+      ports:
+        - "7782:8181"
+      volumes:
+        - /home/callum/docker/tautulli/config:/config
+      restart_policy: unless-stopped
+
+- name: Deloy docker containers for meain server
+  hosts: mainserver
+  become: yes
+  tasks:
+
+  - name: create volume for adguard
+    community.docker.docker_volume:
+      name: adguard-data
+      driver: local
+
+  - name: create volume for dashy
+    community.docker.docker_volume:
+      name: dashy-data
+      driver: local
+
+  - name: deploy dashy
+    community.docker.docker_container:
+      name: Dashy
+      image: "lissy93/dashy"
+      env:
+        PUID=1000
+        GUID=1000
+      ports:
+        - "4000:80"
+      volumes:
+        - /home/callum/docker/dashy/config.yml:/config.yml
+      restart_policy: unless-stopped
+
+  - name: create volume for grafana
+    community.docker.docker_volume:
+      name: grafana-data
+      driver: local
+
+  - name: deploy grafana
+    community.docker.docker_container:
+      name: grafana
+      image: "grafana/grafana-oss:latest"
+      env:
+        PUID=1000
+        GUID=1000
+      ports:
+        - "3000:3000"
+      volumes:
+        - grafana-data:/var/lib/grafana
+      restart_policy: unless-stopped
+
+  - name: deploy speedtest
+    community.docker.docker_container:
+      name: speedtest
+      image: "jraviles/prometheus_speedtest"
+      env:
+        PUID=1000
+        GUID=1000
+      ports:
+        - "9516:9516"
+      volumes:
+        - ./home/callum/docker/speedtest/coonfig:/config
+      restart_policy: unless-stopped
+
+  - name: deploy uptime-kuma
+    community.docker.docker_container:
+      name: uptime-kuma
+      image: "louislam/uptime-kuma:latest"
+      env:
+        PUID=1000
+        GUID=1000
+      ports:
+        - "3001:3001"
+      volumes:
+        - ./home/callum/docker/uptime-kuma:/app/data
+      restart_policy: unless-stopped
