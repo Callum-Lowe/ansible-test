@@ -1,5 +1,5 @@
-[webservers]
-192.168.15.12
+[mainserver]
+192.168.15.30
 
-[fileservers]
-192.168.15.186
+[mediaserver]
+192.168.15.124
